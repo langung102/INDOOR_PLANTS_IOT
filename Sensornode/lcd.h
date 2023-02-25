@@ -1,12 +1,12 @@
 #ifndef LCD
 #define LCD
 
-#include "Wire.h"
+#include <LiquidCrystal_I2C.h>
 #include "HardwareSerial.h"
 #include "global.h"
 
-void print_LCD() {
-  
-}
+void setup_lcd();
+
+void print_lcd();
 
 #endif
