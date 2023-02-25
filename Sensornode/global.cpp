@@ -11,3 +11,9 @@ uint8_t rgb_B_pin = 25;
 uint8_t lcd_scl_pin = 22;
 uint8_t lcd_sda_pin = 21;
 uint8_t pump_pin = 14;
+
+int temp_value = 0;
+int humi_value = 0;
+int distance_value = 0;
+int soil_value = 0;
+int light_value = 0;

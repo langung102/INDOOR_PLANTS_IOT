@@ -9,9 +9,15 @@
 */
 
 #include <esp_now.h>
-#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <WiFi.h>
+#include "temp_humi.h"
 #include "soil.h"
+#include "light.h"
+#include "global.h"
+#include "ultrasonic.h"
+#include "lcd.h"
+#include "rgb.h"
 
 // REPLACE WITH THE MAC Address of your receiver
 uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x33, 0x58, 0x10};
@@ -65,9 +71,7 @@ void setup()
   pinMode(ultrasonic_trig_pin, OUTPUT);
   pinMode(ultrasonic_echo_pin, INPUT);
 
-  // Set up I2C
-  Wire.begin();
-
+  setup_lcd();
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
 
@@ -104,8 +108,15 @@ void setup()
 
 void loop()
 {
-  // strcpy(outgoingReadings.msg, get_moisture_soil());
-  sprintf(outgoingReadings.msg, "%d", get_moisture_soil());
+  temp_value = get_temp();
+  humi_value = get_humi();
+  soil_value = get_moisture_soil();
+  light_value = get_light();
+  distance_value = get_distance();
+
+  print_lcd();
+
+  sprintf(outgoingReadings.msg, "%d;%d;%d;%d;%d", temp_value, humi_value, soil_value, light_value, distance_value);
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
 
   digitalWrite(2, (*incomingReadings.msg - 48));
