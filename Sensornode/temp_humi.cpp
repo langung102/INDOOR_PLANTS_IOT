@@ -6,10 +6,10 @@ void begin_temp_humi() {
   dht.begin();
 }
 
-float get_temp() {
+int get_temp() {
   return dht.readTemperature();
 }
 
-float get_humi() {
+int get_humi() {
   return dht.readHumidity();
 }

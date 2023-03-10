@@ -6,9 +6,9 @@
 
 void begin_temp_humi();
 
-float get_temp();
+int get_temp();
 
-float get_humi();
+int get_humi();
 #include "global.h"
 
 #endif

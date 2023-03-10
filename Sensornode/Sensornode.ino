@@ -20,14 +20,20 @@
 #include "rgb.h"
 
 // REPLACE WITH THE MAC Address of your receiver
-uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x33, 0x58, 0x10};
-
+uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x35, 0xF3, 0x68};
 uint8_t pump = 0;
+unsigned long previousMillis = 0UL;
+unsigned long interval = 700UL;
 
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    char msg[50];
+    char temp[20];
+    char humi[20];
+    char soil[20];
+    char light[20];
+    char distance[20];
+    char pump[1];
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
@@ -55,7 +61,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.print("Data: ");Serial.println(*incomingReadings.msg - 48);
+  Serial.println("Data: ");Serial.println(*incomingReadings.pump - 48);
 }
 
 void setup()
@@ -70,6 +76,8 @@ void setup()
   pinMode(rgb_B_pin, OUTPUT);
   pinMode(ultrasonic_trig_pin, OUTPUT);
   pinMode(ultrasonic_echo_pin, INPUT);
+
+  begin_temp_humi();
 
   setup_lcd();
   // Set device as a Wi-Fi Station
@@ -108,20 +116,39 @@ void setup()
 
 void loop()
 {
-  temp_value = get_temp();
-  humi_value = get_humi();
-  soil_value = get_moisture_soil();
-  light_value = get_light();
-  distance_value = get_distance();
+  // temp_value = get_temp();
+  // humi_value = get_humi();
+  // soil_value = get_moisture_soil();
+  // light_value = get_light();
+  // distance_value = get_distance();
+  
+  temp_value = 100;
+  humi_value = 100;
+  soil_value = 100;
+  light_value = 100;
+  distance_value = 100;
+
+  Serial.print("Temp: ");Serial.println(temp_value);
+  Serial.print("Humi: ");Serial.println(humi_value);
+  Serial.print("Soil: ");Serial.println(soil_value);
+  Serial.print("Light: ");Serial.println(light_value);
+  Serial.print("Distance: ");Serial.println(distance_value);
+  Serial.print("Pump: ");Serial.println(digitalRead(pump_pin));
 
   print_lcd();
 
-  sprintf(outgoingReadings.msg, "%d;%d;%d;%d;%d", temp_value, humi_value, soil_value, light_value, distance_value);
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+  sprintf(outgoingReadings.temp, "%d", temp_value);
+  sprintf(outgoingReadings.humi, "%d", humi_value);
+  sprintf(outgoingReadings.soil, "%d", soil_value);
+  sprintf(outgoingReadings.light, "%d", light_value);
+  sprintf(outgoingReadings.distance, "%d", distance_value);
+  sprintf(outgoingReadings.pump, "%d", digitalRead(pump_pin));
 
-  digitalWrite(2, (*incomingReadings.msg - 48));
-  
-  Serial.println(outgoingReadings.msg);
+  digitalWrite(2, (*incomingReadings.pump - 48));
 
-  delay(1000);  
+  unsigned long currentMillis = millis();
+  if(currentMillis - previousMillis > interval) {
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+    previousMillis = millis();
+  }
 }
