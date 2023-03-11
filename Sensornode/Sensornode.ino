@@ -33,6 +33,7 @@ typedef struct struct_message {
     uint16_t soil;
     uint16_t light;
     uint16_t distance;
+    bool led;
     bool pump;
 } struct_message;
 
@@ -144,9 +145,7 @@ void loop()
   outgoingReadings.distance = distance_value;
   outgoingReadings.pump = digitalRead(pump_pin);
 
-
-  Serial
-  .print("Temp: ");Serial.println(outgoingReadings.temp);
+  Serial.print("Temp: ");Serial.println(outgoingReadings.temp);
   Serial.print("Humi: ");Serial.println(outgoingReadings.humi);
   Serial.print("Soil: ");Serial.println(outgoingReadings.soil);
   Serial.print("Light: ");Serial.println(outgoingReadings.light );
@@ -154,6 +153,8 @@ void loop()
   Serial.print("Pump: ");Serial.println(outgoingReadings.pump);
 
   digitalWrite(2, (incomingReadings.pump));
+
+  set_led(incomingReadings.led);
 
   unsigned long currentMillis = millis();
   if(currentMillis - previousMillis > interval) {
