@@ -28,12 +28,12 @@ unsigned long interval = 700UL;
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    char temp[20];
-    char humi[20];
-    char soil[20];
-    char light[20];
-    char distance[20];
-    char pump[1];
+    uint16_t temp;
+    uint16_t humi;
+    uint16_t soil;
+    uint16_t light;
+    uint16_t distance;
+    bool pump;
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
@@ -61,7 +61,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.println("Data: ");Serial.println(*incomingReadings.pump - 48);
+  Serial.println("Data: ");Serial.println(incomingReadings.pump);
 }
 
 void setup()
@@ -121,30 +121,39 @@ void loop()
   // soil_value = get_moisture_soil();
   // light_value = get_light();
   // distance_value = get_distance();
-  
-  temp_value = 100;
-  humi_value = 100;
-  soil_value = 100;
-  light_value = 100;
-  distance_value = 100;
 
-  Serial.print("Temp: ");Serial.println(temp_value);
-  Serial.print("Humi: ");Serial.println(humi_value);
-  Serial.print("Soil: ");Serial.println(soil_value);
-  Serial.print("Light: ");Serial.println(light_value);
-  Serial.print("Distance: ");Serial.println(distance_value);
-  Serial.print("Pump: ");Serial.println(digitalRead(pump_pin));
+  temp_value = 38;
+  humi_value = 81;
+  soil_value = 29;
+  light_value = 95;
+  distance_value = 100;
 
   print_lcd();
 
-  sprintf(outgoingReadings.temp, "%d", temp_value);
-  sprintf(outgoingReadings.humi, "%d", humi_value);
-  sprintf(outgoingReadings.soil, "%d", soil_value);
-  sprintf(outgoingReadings.light, "%d", light_value);
-  sprintf(outgoingReadings.distance, "%d", distance_value);
-  sprintf(outgoingReadings.pump, "%d", digitalRead(pump_pin));
+  // sprintf(outgoingReadings.temp, "%d", temp_value);
+  // sprintf(outgoingReadings.humi, "%d", humi_value);
+  // sprintf(outgoingReadings.soil, "%d", soil_value);
+  // sprintf(outgoingReadings.light, "%d", light_value);
+  // sprintf(outgoingReadings.distance, "%d", distance_value);
+  // sprintf(outgoingReadings.pump, "%d", digitalRead(pump_pin));
 
-  digitalWrite(2, (*incomingReadings.pump - 48));
+  outgoingReadings.temp = temp_value;
+  outgoingReadings.humi = humi_value;
+  outgoingReadings.soil = soil_value;
+  outgoingReadings.light = light_value;
+  outgoingReadings.distance = distance_value;
+  outgoingReadings.pump = digitalRead(pump_pin);
+
+
+  Serial
+  .print("Temp: ");Serial.println(outgoingReadings.temp);
+  Serial.print("Humi: ");Serial.println(outgoingReadings.humi);
+  Serial.print("Soil: ");Serial.println(outgoingReadings.soil);
+  Serial.print("Light: ");Serial.println(outgoingReadings.light );
+  Serial.print("Distance: ");Serial.println(outgoingReadings.distance);
+  Serial.print("Pump: ");Serial.println(outgoingReadings.pump);
+
+  digitalWrite(2, (incomingReadings.pump));
 
   unsigned long currentMillis = millis();
   if(currentMillis - previousMillis > interval) {

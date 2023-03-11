@@ -9,15 +9,11 @@
 #include <esp32-hal-timer.h>
 /************************ Example Starts Here *******************************/
 
-// this int will hold the current count for our sketch
-int count = 1;
-int last = 0;
-bool flag_pump = 0, flag_timer = 0, flag_pump_changed = 0;
-unsigned long previousMillis_1 = 0UL;
-unsigned long interval_1 = 1000UL;
-unsigned long previousMillis_2 = 0UL;
-unsigned long interval_2 = 10000UL;
+// this int will hold the current last_pumpfor our sketch
+bool last_pump= 1;
+bool flag_pump = 0, flag_timer = 0, flag_io_timer = 0, flag_pump_changed = 0, flag_sensor = 0;
 hw_timer_t *My_timer = NULL;
+
 // Track time of last published messages and limit feed->save events to once
 // every IO_LOOP_DELAY milliseconds.
 //
@@ -47,12 +43,12 @@ uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x33, 0x58, 0x10};
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    char temp[20];
-    char humi[20];
-    char soil[20];
-    char light[20];
-    char distance[20];
-    char pump[1];
+    uint16_t temp;
+    uint16_t humi;
+    uint16_t soil;
+    uint16_t light;
+    uint16_t distance;
+    bool pump;
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
@@ -81,12 +77,12 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
 
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.print("Data: ");Serial.println(*incomingReadings.temp - 48);
-  Serial.print("Data: ");Serial.println(*incomingReadings.humi - 48);
-  Serial.print("Data: ");Serial.println(*incomingReadings.soil - 48);
-  Serial.print("Data: ");Serial.println(*incomingReadings.light - 48);
-  Serial.print("Data: ");Serial.println(*incomingReadings.distance - 48);
-  Serial.print("Data: ");Serial.println(*incomingReadings.pump - 48);
+  Serial.print("Temp: ");Serial.println(incomingReadings.temp);
+  Serial.print("Humi: ");Serial.println(incomingReadings.humi);
+  Serial.print("Soil: ");Serial.println(incomingReadings.soil);
+  Serial.print("Light: ");Serial.println(incomingReadings.light);
+  Serial.print("Distance: ");Serial.println(incomingReadings.distance);
+  Serial.print("Pump: ");Serial.println(incomingReadings.pump);
 }
 
 ////////////////////////////////////////////
@@ -96,7 +92,7 @@ void connect_adafruit() {
   // connect to io.adafruit.com
   io.connect();
 
-  // set up a message handler for the count feed.
+  // set up a message handler for the last_pumpfeed.
   // the handleMessage function (defined below)
   // will be called whenever a message is
   // received from adafruit io.
@@ -148,7 +144,7 @@ void connect_ESPNOW() {
   esp_now_register_recv_cb(OnDataRecv);
 }
 
-void IRAM_ATTR onTimer(){
+void IRAM_ATTR onTimer1(){
   flag_timer = 1;
 }
 
@@ -192,106 +188,133 @@ void setup() {
   esp_now_register_recv_cb(OnDataRecv);
 
   My_timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(My_timer, &onTimer, true);
-  timerAlarmWrite(My_timer, 5000000, true);
+  timerAttachInterrupt(My_timer, &onTimer1, true);
+  timerAlarmWrite(My_timer, 60000000, true);
   timerAlarmEnable(My_timer); //Just Enable
 
   // connect_adafruit();
 }
 
 void loop() {
+  if (flag_timer || flag_pump) {
+    timerAlarmDisable(My_timer);
+    io.wifi_disconnect();
+    WiFi.disconnect(true);
+    connect_ESPNOW();
+    delay(200);
 
-  // if (flag_timer) {
-  //   io.wifi_disconnect();
-  //   WiFi.disconnect(true);
-  //   delay(200);
-
-  //   // get the status of Trasnmitted packet
-  //   esp_now_register_send_cb(OnDataSent);
+    // get the status of Trasnmitted packet
+    esp_now_register_send_cb(OnDataSent);
     
-  //   // Register for a callback function that will be called when data is received
-  //   esp_now_register_recv_cb(OnDataRecv);
+    // Register for a callback function that will be called when data is received
+    esp_now_register_recv_cb(OnDataRecv);
 
+    Serial.println("We in scope 1");
+    Serial.print("sending -> ");
+    Serial.println(last_pump);
+    outgoingReadings.pump = last_pump;
+
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+    Serial.println(success);
+
+    if (!flag_pump) {
+      unsigned long currentMillis = millis();
+      unsigned long previousMillis = millis();
+
+      while (currentMillis - previousMillis <= 1500) {
+        currentMillis = millis();
+      }
+
+      if (last_pump!= incomingReadings.pump) {
+        last_pump = incomingReadings.pump;
+      }
+      
+      flag_sensor = 1;
+    }
+    
+    connect_adafruit();    
+    timerAlarmWrite(My_timer, 60000000, true);
+    timerAlarmEnable(My_timer); //Just Enable
+    flag_pump = 0;
+    flag_timer = 0;  
+    io.run();
+  }
+
+  io.run();
+  
+  if (flag_sensor || flag_pump) {
+    Serial.println(last_pump);
+    Serial.println(flag_pump);
+    Serial.println(flag_sensor);
+    Serial.println(flag_timer);
+
+    Serial.println("We in scope 2");
+    temp->save(incomingReadings.temp);
+    humi->save(incomingReadings.humi);
+    soil->save(incomingReadings.soil);
+    light->save(incomingReadings.light);
+    water->save(incomingReadings.distance);
+    pump->save(incomingReadings.pump);
+
+    flag_sensor = 0;
+  }
+  
+  // if (flag_pump && flag_timer) {
+  //   connect_ESPNOW();
   //   Serial.println("We in scope 1");
   //   Serial.print("sending -> ");
   //   Serial.println(count);
   //   sprintf(outgoingReadings.pump, "%d", count);
-
-  //   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
-  //   Serial.println(success);
-
+  //   do {
+  //     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+  //     // Serial.println(success);
+  //     delay(200);
+  //   }  while (success != "Delivery Success :)");
   //   flag_pump = 0;
-  //   flag_timer = 0;  
-  // connect_adafruit();    
+  //   flag_timer = 0;
   // }
-  // io.run();
-  
-  // if (millis() > (lastUpdate + IO_LOOP_DELAY)) {
+
+  // unsigned long currentMillis_2 = millis();
+  // if(currentMillis_2 - previousMillis_2 > interval_2)
+  // {
+  //   Serial.println(flag_pump);
+  //   Serial.println(count);
   //   Serial.println("We in scope 2");
+
+  //   connect_adafruit();
+
+    // unsigned long currentMillis = millis();
+    // unsigned long previousMillis = millis();
+
+    // while (currentMillis - previousMillis <= 7000) {
+    //   io.run();
+    //   currentMillis = millis();
+    //   if (flag_pump) break;
+    // }
+  
   //   // temp->save(*incomingReadings.temp - 48);
   //   // humi->save(*incomingReadings.humi - 48);
   //   // soil->save(*incomingReadings.soil - 48);
   //   // light->save(*incomingReadings.light - 48);
   //   // water->save(*incomingReadings.distance - 48);
-  //   // pump->save(*incomingReadings.pump - 48);
-  //   lastUpdate = millis();
-  // }
-  
-  if (flag_pump && flag_timer) {
-    connect_ESPNOW();
-    Serial.println("We in scope 1");
-    Serial.print("sending -> ");
-    Serial.println(count);
-    sprintf(outgoingReadings.pump, "%d", count);
-    do {
-      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
-      // Serial.println(success);
-      delay(200);
-    }  while (success != "Delivery Success :)");
-    flag_pump = 0;
-    flag_timer = 0;
-  }
-
-  unsigned long currentMillis_2 = millis();
-  if(currentMillis_2 - previousMillis_2 > interval_2)
-  {
-    Serial.println(flag_pump);
-    Serial.println(count);
-    Serial.println("We in scope 2");
-
-    connect_adafruit();
-
-    unsigned long currentMillis = millis();
-    unsigned long previousMillis = millis();
-
-    while (currentMillis - previousMillis <= 7000) {
-      io.run();
-      currentMillis = millis();
-    }
-  
-    // temp->save(*incomingReadings.temp - 48);
-    // humi->save(*incomingReadings.humi - 48);
-    // soil->save(*incomingReadings.soil - 48);
-    // light->save(*incomingReadings.light - 48);
-    // water->save(*incomingReadings.distance - 48);
-    pump->save(*incomingReadings.pump - 48);
+  //   pump->save(*incomingReadings.pump - 48);
     
 
-    // if (count != *incomingReadings.pump - 48 && !flag_pump_changed) {
-    //   count = *incomingReadings.pump - 48;
+    // if (last_pump!= *incomingReadings.pump - 48 && !flag_pump_changed) {
+    //   last_pump= *incomingReadings.pump - 48;
     //   // pump->save(*incomingReadings.pump - 48);      
     //   flag_pump_changed = 0;
     // }
 
-    io.wifi_disconnect();
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
-    connect_ESPNOW();
-    delay(200);
+  //   io.wifi_disconnect();
+  //   WiFi.disconnect(true);
+  //   WiFi.mode(WIFI_OFF);
+  //   connect_ESPNOW();
+  //   delay(200);
     
-    Serial.println("Adafruit IO disconnected");
-    previousMillis_2 = millis();
-  }
+  //   Serial.println("Adafruit IO disconnected");
+  //   previousMillis_2 = millis();
+  // }
 } 
 
 // this function is called whenever feed message
@@ -301,9 +324,10 @@ void handleMessage(AdafruitIO_Data *data) {
 
   Serial.print("received <- ");
   Serial.println(data->value());
-  if (count != *data->value() - 48) {
+
+  if (last_pump != (bool) (*data->value() - 48)) {
     Serial.println("Oops change!");
-    count = *data->value() - 48;
+    last_pump= (bool) (*data->value() - 48);
     flag_pump = 1;
   }
 
