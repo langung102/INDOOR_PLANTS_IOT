@@ -181,9 +181,10 @@ void setup() {
 
   timer_espnow = timerBegin(0, 80, true);
   timerAttachInterrupt(timer_espnow, &onTimer1, true);
-  timerAlarmWrite(timer_espnow, 60000000, true);
+  timerAlarmWrite(timer_espnow, 60000000, true); //Send data every 1 minutes
   timerAlarmEnable(timer_espnow); //Just Enable
 
+  flag_timer = 1;
   // connect_adafruit();
 }
 
@@ -209,7 +210,7 @@ void loop() {
 
     Serial.print("sending led-> ");
     Serial.println(last_led);
-    outgoingReadings.pump = last_led;
+    outgoingReadings.led = last_led;
 
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
     Serial.println(success);
@@ -239,12 +240,11 @@ void loop() {
     flag_pump = 0;
     flag_led = 0;
     flag_timer = 0;  
-    io.run();
   }
 
   io.run();
   
-  if (flag_sensor || flag_pump || flag_led) {
+  if (flag_sensor) {
     Serial.println("We're in IO Adafruit scope");
 
     Serial.println(last_pump);
@@ -267,6 +267,7 @@ void loop() {
 // this function is called whenever feed message
 // is received from Adafruit IO. it was attached to
 // the feed in the setup() function above.
+
 void handle_pump(AdafruitIO_Data *data) {
   Serial.print("received pump <- ");
   Serial.println(data->value());

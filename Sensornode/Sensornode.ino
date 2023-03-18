@@ -62,7 +62,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.println("Data: ");Serial.println(incomingReadings.pump);
+  Serial.println("Pump: ");Serial.println(incomingReadings.pump);
+  Serial.println("Led: ");Serial.println(incomingReadings.led);
 }
 
 void setup()
@@ -71,7 +72,7 @@ void setup()
   Serial.begin(115200);
   Serial.println("Code start");
 
-  pinMode(2, OUTPUT);
+  pinMode(pump_pin, OUTPUT);
   pinMode(rgb_R_pin, OUTPUT);
   pinMode(rgb_G_pin, OUTPUT);
   pinMode(rgb_B_pin, OUTPUT);
@@ -117,26 +118,13 @@ void setup()
 
 void loop()
 {
-  // temp_value = get_temp();
-  // humi_value = get_humi();
-  // soil_value = get_moisture_soil();
-  // light_value = get_light();
-  // distance_value = get_distance();
-
-  temp_value = 38;
-  humi_value = 81;
-  soil_value = 29;
-  light_value = 95;
-  distance_value = 100;
+  temp_value = get_temp();
+  humi_value = get_humi();
+  soil_value = get_moisture_soil();
+  light_value = get_light();
+  distance_value = get_distance();
 
   print_lcd();
-
-  // sprintf(outgoingReadings.temp, "%d", temp_value);
-  // sprintf(outgoingReadings.humi, "%d", humi_value);
-  // sprintf(outgoingReadings.soil, "%d", soil_value);
-  // sprintf(outgoingReadings.light, "%d", light_value);
-  // sprintf(outgoingReadings.distance, "%d", distance_value);
-  // sprintf(outgoingReadings.pump, "%d", digitalRead(pump_pin));
 
   outgoingReadings.temp = temp_value;
   outgoingReadings.humi = humi_value;
@@ -144,6 +132,7 @@ void loop()
   outgoingReadings.light = light_value;
   outgoingReadings.distance = distance_value;
   outgoingReadings.pump = digitalRead(pump_pin);
+  outgoingReadings.led = digitalRead(rgb_R_pin) || digitalRead(rgb_G_pin) || digitalRead(rgb_B_pin);
 
   Serial.print("Temp: ");Serial.println(outgoingReadings.temp);
   Serial.print("Humi: ");Serial.println(outgoingReadings.humi);
@@ -151,9 +140,9 @@ void loop()
   Serial.print("Light: ");Serial.println(outgoingReadings.light );
   Serial.print("Distance: ");Serial.println(outgoingReadings.distance);
   Serial.print("Pump: ");Serial.println(outgoingReadings.pump);
+  Serial.print("Led: ");Serial.println(outgoingReadings.led);
 
-  digitalWrite(2, (incomingReadings.pump));
-
+  digitalWrite(pump_pin, incomingReadings.pump);
   set_led(incomingReadings.led);
 
   unsigned long currentMillis = millis();
