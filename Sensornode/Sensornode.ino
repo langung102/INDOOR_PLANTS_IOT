@@ -20,14 +20,21 @@
 #include "rgb.h"
 
 // REPLACE WITH THE MAC Address of your receiver
-uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x33, 0x58, 0x10};
-
+uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x35, 0xF3, 0x68};
 uint8_t pump = 0;
+unsigned long previousMillis = 0UL;
+unsigned long interval = 700UL;
 
 //Structure example to send data
 //Must match the receiver structure
 typedef struct struct_message {
-    char msg[50];
+    uint16_t temp;
+    uint16_t humi;
+    uint16_t soil;
+    uint16_t light;
+    uint16_t distance;
+    bool led;
+    bool pump;
 } struct_message;
 
 // Create a struct_message called DHTReadings to hold sensor readings
@@ -55,7 +62,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len)
   memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  Serial.print("Data: ");Serial.println(*incomingReadings.msg - 48);
+  Serial.println("Pump: ");Serial.println(incomingReadings.pump);
+  Serial.println("Led: ");Serial.println(incomingReadings.led);
 }
 
 void setup()
@@ -64,12 +72,14 @@ void setup()
   Serial.begin(115200);
   Serial.println("Code start");
 
-  pinMode(2, OUTPUT);
+  pinMode(pump_pin, OUTPUT);
   pinMode(rgb_R_pin, OUTPUT);
   pinMode(rgb_G_pin, OUTPUT);
   pinMode(rgb_B_pin, OUTPUT);
   pinMode(ultrasonic_trig_pin, OUTPUT);
   pinMode(ultrasonic_echo_pin, INPUT);
+
+  begin_temp_humi();
 
   setup_lcd();
   // Set device as a Wi-Fi Station
@@ -116,12 +126,28 @@ void loop()
 
   print_lcd();
 
-  sprintf(outgoingReadings.msg, "%d;%d;%d;%d;%d", temp_value, humi_value, soil_value, light_value, distance_value);
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+  outgoingReadings.temp = temp_value;
+  outgoingReadings.humi = humi_value;
+  outgoingReadings.soil = soil_value;
+  outgoingReadings.light = light_value;
+  outgoingReadings.distance = distance_value;
+  outgoingReadings.pump = digitalRead(pump_pin);
+  outgoingReadings.led = digitalRead(rgb_R_pin) || digitalRead(rgb_G_pin) || digitalRead(rgb_B_pin);
 
-  digitalWrite(2, (*incomingReadings.msg - 48));
-  
-  Serial.println(outgoingReadings.msg);
+  Serial.print("Temp: ");Serial.println(outgoingReadings.temp);
+  Serial.print("Humi: ");Serial.println(outgoingReadings.humi);
+  Serial.print("Soil: ");Serial.println(outgoingReadings.soil);
+  Serial.print("Light: ");Serial.println(outgoingReadings.light );
+  Serial.print("Distance: ");Serial.println(outgoingReadings.distance);
+  Serial.print("Pump: ");Serial.println(outgoingReadings.pump);
+  Serial.print("Led: ");Serial.println(outgoingReadings.led);
 
-  delay(1000);  
+  digitalWrite(pump_pin, incomingReadings.pump);
+  set_led(incomingReadings.led);
+
+  unsigned long currentMillis = millis();
+  if(currentMillis - previousMillis > interval) {
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
+    previousMillis = millis();
+  }
 }

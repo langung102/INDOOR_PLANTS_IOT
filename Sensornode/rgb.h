@@ -4,7 +4,8 @@
 #include "global.h"
 #include "esp32-hal-gpio.h"
 
-void light_red();
-void light_blue();
+void turn_on();
+void turn_off();
+void set_led(bool);
 
 #endif
