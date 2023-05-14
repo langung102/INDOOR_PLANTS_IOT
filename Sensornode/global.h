@@ -1,4 +1,5 @@
 #include "stdint.h"
+#define maxCapacity 12
 extern uint8_t temp_humi_pin;
 extern uint8_t light_pin;
 extern uint8_t ultrasonic_trig_pin;
@@ -16,3 +17,5 @@ extern int humi_value;
 extern int distance_value;
 extern int soil_value;
 extern int light_value;
+
+bool check_condition(int start, int end, int value);

@@ -8,6 +8,8 @@
 
 */
 
+#define DEVICE_ID 1
+
 #include <esp_now.h>
 #include <LiquidCrystal_I2C.h>
 #include <WiFi.h>
@@ -19,6 +21,22 @@
 #include "lcd.h"
 #include "rgb.h"
 
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
+// Replace with your network credentials
+const char* ssid     = "iPhone (4)";
+const char* password = "11223344";
+
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
+// Variables to save date and time
+String formattedDate;
+String dayStamp;
+String timeStamp;
+
 // REPLACE WITH THE MAC Address of your receiver
 uint8_t broadcastAddress[] = {0x58, 0xBF, 0x25, 0x35, 0xF3, 0x68};
 uint8_t pump = 0;
@@ -27,12 +45,22 @@ unsigned long interval = 700UL;
 
 //Structure example to send data
 //Must match the receiver structure
+
+typedef struct auto_struct {
+  uint16_t temp[2];
+  uint16_t humi[2];
+  uint16_t soil[2];
+  bool is_auto;
+} auto_struct;
+
 typedef struct struct_message {
+    uint8_t id;
     uint16_t temp;
     uint16_t humi;
     uint16_t soil;
     uint16_t light;
     uint16_t distance;
+    auto_struct condition;
     bool led;
     bool pump;
 } struct_message;
@@ -114,6 +142,23 @@ void setup()
   // Register for a callback function that will be called when data is received
   esp_now_register_recv_cb(OnDataRecv);
 
+  // Serial.print("Connecting to ");
+  // Serial.println(ssid);
+  // WiFi.begin(ssid, password);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
+  //   Serial.print(".");
+  // }
+  // // Print local IP address and start web server
+  // Serial.println("");
+  // Serial.println("WiFi connected.");
+  // Serial.println("IP address: ");
+  // Serial.println(WiFi.localIP());
+
+  // // Initialize a NTPClient to get time
+  // timeClient.begin();
+  // timeClient.setTimeOffset(+7*60*60);
+
 }
 
 void loop()
@@ -126,6 +171,7 @@ void loop()
 
   print_lcd();
 
+  outgoingReadings.id = DEVICE_ID;
   outgoingReadings.temp = temp_value;
   outgoingReadings.humi = humi_value;
   outgoingReadings.soil = soil_value;
@@ -142,7 +188,13 @@ void loop()
   Serial.print("Pump: ");Serial.println(outgoingReadings.pump);
   Serial.print("Led: ");Serial.println(outgoingReadings.led);
 
-  digitalWrite(pump_pin, incomingReadings.pump);
+  // if (incomingReadings.is_auto == 1 && check_condition(t[0], t[1], temp_value) && check_condition(h[0], h[1], humi_value) && check_condition(s[0], s[1], soil_value)  ) {
+  //   digitalWrite(pump_pin, HIGH);
+  // } else {
+    // digitalWrite(pump_pin, incomingReadings.pump);  
+    
+  // }
+
   set_led(incomingReadings.led);
 
   unsigned long currentMillis = millis();
@@ -150,4 +202,24 @@ void loop()
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &outgoingReadings, sizeof(outgoingReadings));
     previousMillis = millis();
   }
+
+  //   while(!timeClient.update()) {
+  //   timeClient.forceUpdate();
+  // }
+  // // The formattedDate comes with the following format:
+  // // 2018-05-28T16:00:13Z
+  // // We need to extract date and time
+  // formattedDate = timeClient.getFormattedDate();
+  // Serial.println(formattedDate);
+
+  // // Extract date
+  // int splitT = formattedDate.indexOf("T");
+  // dayStamp = formattedDate.substring(0, splitT);
+  // Serial.print("DATE: ");
+  // Serial.println(dayStamp);
+  // // Extract time
+  // timeStamp = formattedDate.substring(splitT+1, formattedDate.length()-1);
+  // Serial.print("HOUR: ");
+  // Serial.println(timeStamp);
+  delay(1000);
 }

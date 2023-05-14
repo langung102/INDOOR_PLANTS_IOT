@@ -3,7 +3,7 @@
 // visit io.adafruit.com if you need to create an account,
 // or if you need your Adafruit IO key.
 #define IO_USERNAME "langung"
-#define IO_KEY "aio_PUjP353rvBjxr7FYCw5CGfaylP5d"
+#define IO_KEY "aio_LYrx454Pjk8rdoghWKZVGnjgxIvq"
 
 /******************************* WIFI **************************************/
 
@@ -17,6 +17,9 @@
 //   - Adafruit Metro M4 Express AirLift Lite ->
 //   https://www.adafruit.com/product/4000
 //   - Adafruit AirLift Breakout -> https://www.adafruit.com/product/4201
+
+// #define WIFI_SSID "TP-Link_25E6"
+// #define WIFI_PASS "68156336"
 
 #define WIFI_SSID "TP-Link_25E6"
 #define WIFI_PASS "68156336"
